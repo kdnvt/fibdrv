@@ -1,19 +1,29 @@
-#include <linux/types.h>
+
+#define my_max(a, b) a ^ ((a ^ b) & -(a < b))
+
+#define my_swap(a, b, t) \
+    t = b;               \
+    b = a;               \
+    a = t;
 
 typedef struct _bn {
-    size_t size;
+    unsigned long long length;
     unsigned long long *num;
 } bn_t;
 
-bool bn_new(bn_t *bn_ptr, size_t size);
+bool bn_new(bn_t *bn_ptr, unsigned long long length);
+
+bool bn_znew(bn_t *bn_ptr, unsigned long long length);
 
 void bn_free(bn_t *bn_ptr);
 
-void bn_add(const bn_t *bn1, const bn_t *bn2, bn_t *res);
+bool bn_add(const bn_t *a, const bn_t *b, bn_t *res);
 
-void bn_sub(const bn_t *bn1, const bn_t *bn2, bn_t *res);
+bool bn_sub(const bn_t *a, const bn_t *b, bn_t *res);
+bool bn_toggle_move(const bn_t *a, bn_t *res);
+bool bn_move(const bn_t *a, bn_t *res);
+void bn_add_carry(const bn_t *b, bn_t *res, int carry);
 
-// ops == 0 for addition, 1 for subtraction
-void bn_add_or_sub(const bn_t *bn1, const bn_t *bn2, bn_t *res, int op);
+void bn_swap(bn_t *a, bn_t *b);
 
-void bn_mult(const bn_t *bn1, const bn_t *bn2, bn_t *res);
+void bn_mult(const bn_t *a, const bn_t *b, bn_t *res);
