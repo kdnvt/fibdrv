@@ -5,7 +5,7 @@ typedef struct _bn {
     unsigned long long *num;
 } bn_t;
 
-void bn_new(bn_t *bn_ptr, size_t size);
+bool bn_new(bn_t *bn_ptr, size_t size);
 
 void bn_free(bn_t *bn_ptr);
 
