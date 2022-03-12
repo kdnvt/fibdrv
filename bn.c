@@ -64,7 +64,7 @@ bool bn_sub(const bn_t *a, const bn_t *b, bn_t *res)
 
 bool bn_toggle_move(const bn_t *a, bn_t *res)
 {
-    if (a->length < res->length)
+    if (a->length > res->length)
         return false;
     int i;
     for (i = 0; i < a->length; i++)
@@ -76,7 +76,7 @@ bool bn_toggle_move(const bn_t *a, bn_t *res)
 
 bool bn_move(const bn_t *a, bn_t *res)
 {
-    if (a->length < res->length)
+    if (a->length > res->length)
         return false;
     int i;
     for (i = 0; i < a->length; i++)
