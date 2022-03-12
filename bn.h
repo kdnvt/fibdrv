@@ -1,10 +1,5 @@
-
-#define my_max(a, b) a ^ ((a ^ b) & -(a < b))
-
-#define my_swap(a, b, t) \
-    t = b;               \
-    b = a;               \
-    a = t;
+#ifndef _FIB_BN_H
+#define _FIB_BN_H
 
 typedef struct _bn {
     unsigned long long length;
@@ -27,3 +22,5 @@ void bn_add_carry(const bn_t *b, bn_t *res, int carry);
 void bn_swap(bn_t *a, bn_t *b);
 
 void bn_mult(const bn_t *a, const bn_t *b, bn_t *res);
+
+#endif /* _FIB_BN_H */
