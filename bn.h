@@ -1,5 +1,6 @@
 #ifndef _FIB_BN_H
 #define _FIB_BN_H
+#include <linux/types.h>
 
 typedef struct _bn {
     unsigned long long length;
