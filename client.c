@@ -11,7 +11,7 @@ int main()
 {
     long long sz;
 
-    char buf[1];
+    unsigned long long buf[200];
     char write_buf[] = "testing writing";
     int offset = 100; /* TODO: try test something bigger than the limit */
 
@@ -28,20 +28,20 @@ int main()
 
     for (int i = 0; i <= offset; i++) {
         lseek(fd, i, SEEK_SET);
-        sz = read(fd, buf, 1);
+        sz = read(fd, buf, 200 * sizeof(unsigned long long));
         printf("Reading from " FIB_DEV
                " at offset %d, returned the sequence "
-               "%lld.\n",
-               i, sz);
+               "%llu.(size = %lld\n",
+               i, buf[0], sz);
     }
 
     for (int i = offset; i >= 0; i--) {
         lseek(fd, i, SEEK_SET);
-        sz = read(fd, buf, 1);
+        sz = read(fd, buf, 200 * sizeof(unsigned long long));
         printf("Reading from " FIB_DEV
                " at offset %d, returned the sequence "
-               "%lld.\n",
-               i, sz);
+               "%llu.(size = %lld\n",
+               i, buf[0], sz);
     }
 
     close(fd);
