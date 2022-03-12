@@ -33,7 +33,7 @@ bool bn_add(const bn_t *a, const bn_t *b, bn_t *res)
         (a->length == b->length &&
          b->num[b->length - 1] > a->num[a->length - 1]))
         swap(a, b);
-    res->length = a->length + a->num[a->length - 1] > 0;
+    res->length = a->length + (a->num[a->length - 1] > 0);
     bn_free(res);
     if (!bn_znew(res, res->length))
         return false;
@@ -99,16 +99,16 @@ void bn_add_carry(const bn_t *b, bn_t *res, int carry)
      * be one on next loop.
      */
     for (i = 0; i < b->length; i++) {
-        int overflow = b->num[i] & res->num[i];
-        int msb = b->num[i] | res->num[i];
+        unsigned long long overflow = b->num[i] & res->num[i];
+        unsigned long long msb = b->num[i] | res->num[i];
         res->num[i] += b->num[i] + carry;
         msb &= ~res->num[i];
         overflow |= msb;
         carry = !!(overflow & 1ULL << 63);
     }
     for (; i < res->length && carry; i++) {
-        int overflow = b->num[i] & res->num[i];
-        int msb = b->num[i] | res->num[i];
+        unsigned long long overflow = b->num[i] & res->num[i];
+        unsigned long long msb = b->num[i] | res->num[i];
         res->num[i] += carry;
         msb &= ~res->num[i];
         overflow |= msb;
