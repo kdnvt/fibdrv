@@ -58,6 +58,8 @@ static unsigned long long fib_sequence(long long k, bn_t *ret)
         bn_free(ret);
         return 0;
     }
+    if (k == 0)
+        ret->num[0] = 0;
     return ret->length;
 }
 
