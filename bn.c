@@ -5,7 +5,8 @@
 bool bn_new(bn_t *bn_ptr, unsigned long long length)
 {
     bn_ptr->length = 0;
-    if (bn_ptr->num = kmalloc(sizeof(unsigned long long) * length, GFP_KERNEL))
+    if ((bn_ptr->num =
+             kmalloc(sizeof(unsigned long long) * length, GFP_KERNEL)))
         bn_ptr->length = length;
     return !!bn_ptr->num;
 }
@@ -13,7 +14,8 @@ bool bn_new(bn_t *bn_ptr, unsigned long long length)
 bool bn_znew(bn_t *bn_ptr, unsigned long long length)
 {
     bn_ptr->length = 0;
-    if (bn_ptr->num = kzalloc(sizeof(unsigned long long) * length, GFP_KERNEL))
+    if ((bn_ptr->num =
+             kzalloc(sizeof(unsigned long long) * length, GFP_KERNEL)))
         bn_ptr->length = length;
     return !!bn_ptr->num;
 }
