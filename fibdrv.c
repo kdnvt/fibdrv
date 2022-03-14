@@ -27,6 +27,9 @@ static struct cdev *fib_cdev;
 static struct class *fib_class;
 static DEFINE_MUTEX(fib_mutex);
 
+static ktime_t kt;
+static ktime_t k_to_ut;
+
 static unsigned long long fib_sequence(long long k, bn_t *ret)
 {
     /* FIXME: use clz/ctz and fast algorithms to speed up */
@@ -85,13 +88,16 @@ static ssize_t fib_read(struct file *file,
                         loff_t *offset)
 {
     bn_t res = {};
+    kt = ktime_get();
     ssize_t res_size = fib_sequence(*offset, &res) * sizeof(unsigned long long);
+    kt = ktime_sub(ktime_get(), kt);
     if (res_size <= 0 || res_size > size)
         return 0;
     access_ok(buf, size);
-
+    k_to_ut = ktime_get();
     if (copy_to_user(buf, res.num, res_size))
         res_size = 0;
+    k_to_ut = ktime_sub(ktime_get(), k_to_ut);
     bn_free(&res);
     return res_size;
 }
@@ -102,7 +108,11 @@ static ssize_t fib_write(struct file *file,
                          size_t size,
                          loff_t *offset)
 {
-    return 1;
+    if (*offset == 0)
+        return ktime_to_ns(kt);
+    else if (*offset == 1)
+        return ktime_to_ns(k_to_ut);
+    return 0;
 }
 
 static loff_t fib_device_lseek(struct file *file, loff_t offset, int orig)
