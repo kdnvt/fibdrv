@@ -92,14 +92,11 @@ int bn_to_string(unsigned long long *bn, int bn_len, char **str_ptr)
     for (int i = bn_len - 1; i >= 0; i--) {
         for (int j = width - 1; j >= 0; j--) {
             int carry = 0;
-            for (int k = 0; k < len && k < total_len; k++) {
-                str[k] += str[k];
-            }
             if (bn[i] & (1ULL << j))
                 carry = 1;
 
             for (int k = 0; k < len && k < total_len; k++) {
-                str[k] += carry;
+                str[k] += str[k] + carry;
                 carry = 0;
                 if (str[k] > 9) {
                     carry = 1;
