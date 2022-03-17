@@ -8,7 +8,7 @@
 
 #define FIB_DEV "/dev/fibonacci"
 #define RUNS 50
-#define OFFSET 100
+#define OFFSET 1000
 
 
 
@@ -109,24 +109,20 @@ int bn_to_string(unsigned long long *bn, int bn_len, char **str_ptr)
         return 0;
 
     for (int i = bn_len - 1; i >= 0; i--) {
-        for (int j = width - 4; j >= 0; j -= 4) {
-            int carry = (bn[i] >> j) & 0x0fLLU;
+        for (int j = width - 32; j >= 0; j -= 32) {
+            unsigned long long carry = bn[i] >> j & 0xffffffffllu;
 
             /* ++total_len only if k == total_len && carry != 0 */
             for (int k = 0; k < len && (k < total_len || carry && ++total_len);
                  k++) {
-                str[k] += str[k] * 15 + carry;
-                carry = 0;
-                if (str[k] > 9) {
-                    carry = str[k] / 10;
-                    str[k] %= 10;
-                }
+                carry += (unsigned long long) str[k] << 32;
+                str[k] = carry % 10;
+                carry /= 10;
             }
         }
     }
-    for (int k = 0; k < total_len; k++) {
+    for (int k = 0; k < total_len; k++)
         str[k] += '0';
-    }
 
     reverse(str, total_len);
     *str_ptr = str;
