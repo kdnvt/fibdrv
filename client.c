@@ -8,7 +8,9 @@
 
 #define FIB_DEV "/dev/fibonacci"
 #define RUNS 50
-#define OFFSET 100
+#define OFFSET 1000
+
+
 
 int bn_to_string(unsigned long long *bn, int bn_len, char **str_ptr);
 
@@ -49,13 +51,14 @@ int main()
             clock_gettime(CLOCK_MONOTONIC, &tp_start);
             bn_to_string(buf, sz / sizeof(*buf), &str);
             clock_gettime(CLOCK_MONOTONIC, &tp_end);
-            free(str);
+
             ut[i][j] = tp_end.tv_nsec - tp_start.tv_nsec;
 
             printf("Reading from " FIB_DEV
                    " at offset %d, returned the sequence "
                    "%s.\n",
                    i, str);
+            free(str);
             lseek(fd, 0, SEEK_SET);
             kt[i][j] = write(fd, write_buf, strlen(write_buf));
             lseek(fd, 1, SEEK_SET);
@@ -88,6 +91,7 @@ int main()
                " at offset %d, returned the sequence "
                "%s.\n",
                i, str);
+        free(str);
     }
 
     close(fd);
@@ -100,26 +104,32 @@ int bn_to_string(unsigned long long *bn, int bn_len, char **str_ptr)
     int bn_bits = bn_len * width;
     int len = bn_bits / 3 + 2;
     int total_len = 1;
-    char *str = calloc(len, 1);
+    unsigned char *str = calloc(len, 1);
     if (!str)
         return 0;
 
     for (int i = bn_len - 1; i >= 0; i--) {
-        for (int j = width - 1; j >= 0; j--) {
-            int carry = 0;
-            if (bn[i] & (1ULL << j))
-                carry = 1;
+        for (int j = width - 4; j >= 0; j -= 4) {
+            int carry = (bn[i] >> j) & 0x0fLLU;
 
-            for (int k = 0; k < len && k < total_len; k++) {
-                str[k] += str[k] + carry;
+            for (int k = 0;
+                 k < len && k < total_len /*|| carry && ++total_len*/; k++) {
+                str[k] += str[k] * 15 + carry;
                 carry = 0;
                 if (str[k] > 9) {
-                    carry = 1;
-                    str[k] -= 10;
+                    carry = str[k] / 10;
+                    str[k] %= 10;
                 }
             }
-            if (carry)
-                str[total_len++] = 1;
+            while (carry) {
+                str[total_len] += carry;
+                carry = 0;
+                if (str[total_len] > 9) {
+                    carry = str[total_len] / 10;
+                    str[total_len] %= 10;
+                }
+                total_len++;
+            }
         }
     }
     for (int k = 0; k < total_len; k++) {
