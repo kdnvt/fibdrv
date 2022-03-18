@@ -13,6 +13,8 @@ bool bn_znew(bn_t *bn_ptr, unsigned long long length);
 
 void bn_free(bn_t *bn_ptr);
 
+bool bn_zrenew(bn_t *bn_ptr, unsigned long long length);
+
 bool bn_add(const bn_t *a, const bn_t *b, bn_t *res);
 
 bool bn_sub(const bn_t *a, const bn_t *b, bn_t *res);

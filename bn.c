@@ -20,6 +20,22 @@ bool bn_znew(bn_t *bn_ptr, unsigned long long length)
     return !!bn_ptr->num;
 }
 
+bool bn_zrenew(bn_t *bn_ptr, unsigned long long length)
+{
+    if (length == bn_ptr->length) {
+        memset(bn_ptr->num, 0, sizeof(unsigned long long) * length);
+        return true;
+    }
+    unsigned long long *tmp =
+        krealloc(bn_ptr->num, sizeof(unsigned long long) * length, GFP_KERNEL);
+    if (tmp == NULL)
+        return false;
+    memset(tmp, 0, sizeof(unsigned long long) * length);
+    bn_ptr->length = length;
+    bn_ptr->num = tmp;
+    return true;
+}
+
 // cppcheck-suppress unusedFunction
 void bn_free(bn_t *bn_ptr)
 {
@@ -33,9 +49,9 @@ bool bn_add(const bn_t *a, const bn_t *b, bn_t *res)
         (a->length == b->length &&
          b->num[b->length - 1] > a->num[a->length - 1]))
         swap(a, b);
-    res->length = a->length + (a->num[a->length - 1] > 0);
-    bn_free(res);
-    if (!bn_znew(res, res->length))
+    if (!bn_zrenew(res, a->length + ((a->num[a->length - 1] &
+                                      1LLU << (sizeof(unsigned long long) * 8 -
+                                               1)) > 0)))
         return false;
     bn_move(a, res);
     bn_add_carry(b, res, 0);
@@ -47,10 +63,9 @@ bool bn_add(const bn_t *a, const bn_t *b, bn_t *res)
 // cppcheck-suppress unusedFunction
 bool bn_sub(const bn_t *a, const bn_t *b, bn_t *res)
 {
-    res->length = max(a->length, b->length);
-    bn_free(res);
-    if (!bn_znew(res, res->length))
+    if (!bn_zrenew(res, max(a->length, b->length)))
         return false;
+
     if (a->length > b->length) {
         bn_toggle_move(a, res);
         bn_add_carry(b, res, 0);   // res = (~a+b) = b-a-1
