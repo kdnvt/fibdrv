@@ -16,6 +16,7 @@ MODULE_DESCRIPTION("Fibonacci engine driver");
 MODULE_VERSION("0.1");
 
 #define DEV_FIBONACCI_NAME "fibonacci"
+#define DOUBLING
 
 /* MAX_LENGTH is set to 92 because
  * ssize_t can't fit the number > 92
@@ -29,10 +30,16 @@ static DEFINE_MUTEX(fib_mutex);
 
 static ktime_t kt;
 static ktime_t k_to_ut;
-
+// cppcheck-suppress unusedFunction
 static unsigned long long fib_sequence(long long k, bn_t *ret)
 {
     /* FIXME: use clz/ctz and fast algorithms to speed up */
+    if (k == 0 || k == 1) {
+        ret->num = kmalloc(sizeof(unsigned long long), GFP_KERNEL);
+        ret->num[0] = k;
+        ret->length = 1;
+        return 1;
+    }
 
     bn_t a, b, res = {};
     bn_znew(&a, 1);
@@ -61,8 +68,72 @@ static unsigned long long fib_sequence(long long k, bn_t *ret)
         bn_free(ret);
         return 0;
     }
-    if (k == 0)
-        ret->num[0] = 0;
+    return ret->length;
+}
+// cppcheck-suppress unusedFunction
+static unsigned long long fib_doubling(long long k, bn_t *ret)
+{
+    if (k == 0 || k == 1) {
+        ret->num = kmalloc(sizeof(unsigned long long), GFP_KERNEL);
+        ret->num[0] = k;
+        ret->length = 1;
+        return 1;
+    }
+
+    bn_t a, b;
+    bn_znew(&a, 2);
+    bn_znew(&b, 2);
+    int bits = 32 - __builtin_clz(k);
+    if (!a.num || !b.num) {
+        bn_free(&a);
+        bn_free(&b);
+        return 0;
+    }
+    a.num[0] = 0;
+    b.num[0] = 1;
+    bool err = false;
+    for (int i = bits - 1; i >= 0; i--) {
+        bn_t t1 = {}, t2 = {}, t3 = {}, t4 = {};
+        err |= !bn_new(&t1, b.length);
+        err |= !bn_move(&b, &t1);
+        err |= !bn_lshift(&t1, 1);     // t1 = 2*b
+        err |= !bn_sub(&t1, &a, &t2);  // t2 = 2*b - a
+        err |= !bn_new(&t3, a.length);
+        err |= !bn_move(&a, &t3);   // t3 = a
+        err |= !bn_mult(&t3, &t2);  // t2 = a*(2*b -a);
+
+        err |= !bn_mult(&a, &t3);
+        err |= !bn_move(&b, &t1);
+        err |= !bn_mult(&b, &t1);
+        err |= !bn_add(&t1, &t3, &t4);  // t4 = a^2 + b^2;
+
+        err |= !bn_extend(&a, t2.length);
+        err |= !bn_extend(&b, t4.length);
+        err |= !bn_move(&t2, &a);
+        err |= !bn_move(&t4, &b);
+
+        if (k & 1 << i) {
+            err |= !bn_add(&a, &b, &t1);  // t1 = a+b
+            err |= !bn_extend(&a, b.length);
+            err |= !bn_move(&b, &a);  // a = b
+            err |= !bn_extend(&b, t1.length);
+            err |= !bn_move(&t1, &b);  // b = t1
+        }
+
+        bn_free(&t1);
+        bn_free(&t2);
+        bn_free(&t3);
+        bn_free(&t4);
+        if (err)
+            break;
+    }
+    bn_swap(&a, ret);
+    bn_free(&a);
+    bn_free(&b);
+    if (err) {
+        bn_free(ret);
+        return 0;
+    }
     return ret->length;
 }
 
@@ -89,10 +160,17 @@ static ssize_t fib_read(struct file *file,
 {
     bn_t res = {};
     kt = ktime_get();
+#ifdef DOUBLING
+    ssize_t res_size = fib_doubling(*offset, &res) * sizeof(unsigned long long);
+#endif
+#ifndef DOUBLING
     ssize_t res_size = fib_sequence(*offset, &res) * sizeof(unsigned long long);
+#endif
     kt = ktime_sub(ktime_get(), kt);
-    if (res_size <= 0 || res_size > size)
+    if (res_size <= 0 || res_size > size) {
+        printk("read error:res_size = %d\n", res_size);
         return 0;
+    }
     access_ok(buf, size);
     k_to_ut = ktime_get();
     if (copy_to_user(buf, res.num, res_size))
