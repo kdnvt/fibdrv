@@ -154,12 +154,10 @@ void bn_add_carry(const bn_t *b, bn_t *res, int carry)
         carry = !!(overflow & 1ULL << 63);
     }
     for (; i < res->length && carry; i++) {
-        unsigned long long overflow = b->num[i] & res->num[i];
-        unsigned long long msb = b->num[i] | res->num[i];
+        unsigned long long msb = res->num[i];
         res->num[i] += carry;
         msb &= ~res->num[i];
-        overflow |= msb;
-        carry = !!(overflow & 1ULL << 63);
+        carry = !!(msb & 1ULL << 63);
     }
 }
 
@@ -191,7 +189,37 @@ bool bn_lshift(bn_t *res, unsigned long long bits)
     return true;
 }
 
-bool bn_mult(bn_t *a, bn_t *res)
+void bn_rshift(bn_t *res, unsigned long long bits)
+{
+    if (!bits)
+        return;
+    unsigned long long shift_len = bits / 64;
+    unsigned long long mod_bits = bits & 0x3fULL;
+
+    if (shift_len > res->length) {
+        memset(res->num, 0, res->length * sizeof(unsigned long long));
+        res->length = 1;
+        return;
+    }
+    int i;
+    for (i = 0; i < res->length - shift_len - 1; i++)
+        res->num[i] = (res->num[i + shift_len] >> mod_bits) |
+                      ((res->num[i + shift_len + 1] << (63 - mod_bits)) << 1);
+    res->num[res->length - shift_len - 1] =
+        res->num[res->length - 1] >> mod_bits;
+    for (i = res->length - shift_len; i < res->length - 1; i++)
+        res->num[i] = 0;
+    res->length = res->length - shift_len;
+    return;
+}
+
+void bn_mask(bn_t *bn_ptr, unsigned long long mask)
+{
+    for (int i = 0; i < bn_ptr->length; i++)
+        bn_ptr->num[i] &= mask;
+}
+// cppcheck-suppress unusedFunction
+bool bn_mult_slow(bn_t *a, bn_t *res)
 {
     bn_shrink(a);
     bn_shrink(res);
@@ -215,6 +243,52 @@ bool bn_mult(bn_t *a, bn_t *res)
     bn_swap(&sum, res);
     bn_free(&sum);
     bn_free(&tmp);
+    bn_shrink(res);
+    return true;
+}
+
+bool bn_mult(bn_t *a, bn_t *res)
+{
+    bn_shrink(a);
+    bn_shrink(res);
+    bn_t low = {};
+    if (!bn_znew(&low, res->length))
+        return false;
+    bn_t high = {};
+    if (!bn_znew(&high, a->length + res->length + 5))
+        return false;
+    bn_t sum = {};
+    if (!bn_znew(&sum, a->length + res->length + 5))
+        return false;
+    for (int i = 0; i < a->length; i++) {
+        for (int j = 0; j < 64; j += 32) {
+            unsigned long long multiplier = ((a->num[i]) >> j) & 0xffffffffULL;
+            bn_extend(&low, res->length);
+            bn_move(res, &low);
+            bn_extend(&high, res->length);
+            bn_move(res, &high);
+            bn_rshift(&high, 32);
+            bn_mask(&low, 0xffffffffULL);
+
+            bn_mask(&high, 0xffffffffULL);
+            for (int k = 0; k < low.length; k++) {
+                low.num[k] *= multiplier;
+            }
+            for (int k = 0; k < high.length; k++) {
+                high.num[k] *= multiplier;
+            }
+            bn_lshift(&high, 32);
+            bn_extend(&high, low.length + 1);
+            bn_add_carry(&low, &high, 0);
+            bn_lshift(&high, i * 64 + j);
+            bn_extend(&sum, high.length + 1);
+            bn_add_carry(&high, &sum, 0);
+        }
+    }
+    bn_swap(&sum, res);
+    bn_free(&sum);
+    bn_free(&low);
+    bn_free(&high);
     bn_shrink(res);
     return true;
 }

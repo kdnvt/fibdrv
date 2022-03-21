@@ -29,6 +29,10 @@ void bn_add_carry(const bn_t *b, bn_t *res, int carry);
 
 bool bn_lshift(bn_t *res, unsigned long long bits);
 
+void bn_rshift(bn_t *res, unsigned long long bits);
+
+void bn_mask(bn_t *bn_ptr, unsigned long long mask);
+
 void bn_swap(bn_t *a, bn_t *b);
 
 bool bn_mult(bn_t *a, bn_t *res);
