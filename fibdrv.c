@@ -159,16 +159,20 @@ static ssize_t fib_read(struct file *file,
                         loff_t *offset)
 {
     bn_t res = {};
-    kt = ktime_get();
+    bool doubling = false;
 #ifdef DOUBLING
-    ssize_t res_size = fib_doubling(*offset, &res) * sizeof(unsigned long long);
+    doubling = true;
 #endif
-#ifndef DOUBLING
-    ssize_t res_size = fib_sequence(*offset, &res) * sizeof(unsigned long long);
-#endif
+    kt = ktime_get();
+    ssize_t res_size;
+    if (doubling)
+        res_size = fib_doubling(*offset, &res) * sizeof(unsigned long long);
+    else
+        res_size = fib_sequence(*offset, &res) * sizeof(unsigned long long);
+
     kt = ktime_sub(ktime_get(), kt);
     if (res_size <= 0 || res_size > size) {
-        printk("read error:res_size = %d\n", res_size);
+        printk("read error:res_size = %ld\n", res_size);
         return 0;
     }
     access_ok(buf, size);
