@@ -71,6 +71,7 @@ void bn_free(bn_t *bn_ptr)
 {
     kfree(bn_ptr->num);
     bn_ptr->num = NULL;
+    bn_ptr->length = 0;
 }
 // cppcheck-suppress unusedFunction
 bool bn_add(const bn_t *a, const bn_t *b, bn_t *res)
